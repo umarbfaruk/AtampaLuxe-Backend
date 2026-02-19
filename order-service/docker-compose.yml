@@ -1,0 +1,40 @@
+version: "3.9"  # optional, can remove since Docker warns it's obsolete
+
+services:
+  postgres-order:
+    image: postgres:15
+    container_name: postgres-order
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: orderdb
+    volumes:
+      - orderdb-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d orderdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - atampa-network
+
+  order-service:
+    build: .
+    container_name: order-service
+    restart: always
+    env_file: .env   # loads DATABASE_URL and PORT
+    ports:
+      - "3004:3004"
+    depends_on:
+      postgres-order:
+        condition: service_healthy
+    networks:
+      - atampa-network
+
+volumes:
+  orderdb-data:
+
+networks:
+  atampa-network:
+    driver: bridge

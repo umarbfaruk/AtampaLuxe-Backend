@@ -1,0 +1,49 @@
+// 1️⃣ Datasource (connects Prisma to Postgres)
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // make sure this is defined in .env
+}
+
+// 2️⃣ Prisma client generator
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 3️⃣ Order model
+model Order {
+  id           Int             @id @default(autoincrement())
+  userId       Int
+  orderCode    String          @unique
+  status       String          @default("PENDING") // PENDING, PAID, SHIPPED, DELIVERED, RETURNED
+  totalAmount  Int
+  delayCredit  Int?            @default(0)         // credit in case of shipping delay
+
+  items        OrderItem[]
+  timeline     OrderTimeline[]
+
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt          // auto-updated timestamp
+}
+
+// 4️⃣ Order items
+model OrderItem {
+  id        Int    @id @default(autoincrement())
+  orderId   Int
+  productId Int
+  name      String
+  price     Int
+  quantity  Int
+
+  order     Order  @relation(fields: [orderId], references: [id])
+}
+
+// 5️⃣ Order timeline
+model OrderTimeline {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  status    String   // e.g., PENDING, PAID, SHIPPED, DELIVERED
+  message   String
+  createdAt DateTime @default(now())
+
+  order     Order    @relation(fields: [orderId], references: [id])
+}
