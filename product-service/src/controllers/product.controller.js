@@ -1,66 +1,200 @@
-// src/controllers/product.controller.js
-const productService = require('../services/product.service');
+import prisma from "../prismaClient.js";
 
-const createProduct = async (req, res) => {
+/* =========================
+   CREATE PRODUCT
+========================= */
+
+export const createProduct = async (req, res) => {
   try {
-    const product = await productService.createProduct(req.body);
-    res.json(product);
+    const {
+      name,
+      description,
+      category,
+      subcategory,
+      brand,
+      sku,
+      price,
+      stock,
+      tags,
+      weight,
+      video,
+    } = req.body;
+
+    const product = await prisma.product.create({
+      data: {
+        vendorId: req.user.id,
+
+        name,
+        description,
+        category,
+        subcategory,
+
+        brand,
+        sku,
+
+        price: Number(price),
+
+        stock: Number(stock),
+
+        image: req.file
+          ? `/uploads/${req.file.filename}`
+          : null,
+
+        video,
+
+        tags: tags
+          ? JSON.parse(tags)
+          : null,
+
+        weight: weight
+          ? Number(weight)
+          : null,
+      },
+    });
+
+    res.status(201).json(product);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error(
+      "CREATE PRODUCT ERROR:",
+      err
+    );
+
+    res.status(500).json({
+      message: "Failed to create product",
+      details: err.message,
+    });
   }
 };
 
-const getProducts = async (req, res) => {
+/* =========================
+   GET ALL PRODUCTS
+========================= */
+
+export const getProducts = async (req, res) => {
   try {
-    const products = await productService.getProducts();
+    const products =
+      await prisma.product.findMany({
+        where: {
+          isActive: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
     res.json(products);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error(
+      "GET PRODUCTS ERROR:",
+      err
+    );
+
+    res.status(500).json({
+      message: "Failed to fetch products",
+      details: err.message,
+    });
   }
 };
 
-const getProductById = async (req, res) => {
+/* =========================
+   GET PRODUCT BY ID
+========================= */
+
+export const getProductById = async (
+  req,
+  res
+) => {
   try {
-    const product = await productService.getProductById(req.params.id);
+    console.log(
+      "GET PRODUCT ID:",
+      req.params.id
+    );
+
+    const product =
+      await prisma.product.findUnique({
+        where: {
+          id: req.params.id,
+        },
+      });
+
+    if (!product) {
+      return res.status(404).json({
+        message: "Product not found",
+      });
+    }
+
     res.json(product);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error(
+      "GET PRODUCT ERROR:",
+      err
+    );
+
+    res.status(500).json({
+      message: "Failed to fetch product",
+      details: err.message,
+    });
   }
 };
 
-const updateProduct = async (req, res) => {
+/* =========================
+   UPDATE PRODUCT
+========================= */
+
+export const updateProduct = async (
+  req,
+  res
+) => {
   try {
-    const product = await productService.updateProduct(req.params.id, req.body);
-    res.json(product);
+    const updated =
+      await prisma.product.update({
+        where: {
+          id: req.params.id,
+        },
+        data: req.body,
+      });
+
+    res.json(updated);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error(
+      "UPDATE PRODUCT ERROR:",
+      err
+    );
+
+    res.status(500).json({
+      message: "Failed to update product",
+      details: err.message,
+    });
   }
 };
 
-const deleteProduct = async (req, res) => {
+/* =========================
+   DELETE PRODUCT
+========================= */
+
+export const deleteProduct = async (
+  req,
+  res
+) => {
   try {
-    const product = await productService.deleteProduct(req.params.id);
-    res.json(product);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-};
+    await prisma.product.delete({
+      where: {
+        id: req.params.id,
+      },
+    });
 
-const reduceStock = async (req, res) => {
-  try {
-    const { quantity } = req.body;
-    const product = await productService.reduceStock(req.params.id, quantity);
-    res.json(product);
+    res.json({
+      message: "Product deleted",
+    });
   } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-};
+    console.error(
+      "DELETE PRODUCT ERROR:",
+      err
+    );
 
-module.exports = {
-  createProduct,
-  getProducts,
-  getProductById,
-  updateProduct,
-  deleteProduct,
-  reduceStock,
+    res.status(500).json({
+      message: "Failed to delete product",
+      details: err.message,
+    });
+  }
 };

@@ -3,25 +3,43 @@ import express from "express";
 import cors from "cors";
 import jwt from "jsonwebtoken";
 
-import authRoutes from "./routes/auth.routes.js";
+import authRouter from "./routes/auth.routes.js";
 import { verifyToken } from "./middlewares/auth.middleware.js";
 
 const app = express();
-app.use(cors());
+
+/* =========================
+   MIDDLEWARE
+========================= */
+app.use(cors({ origin: true, credentials: true }));
+
+// MUST BE FIRST for JSON parsing
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-const PORT = process.env.PORT || 3002;
-
-// ROOT
-app.get("/", (req, res) => {
-  res.send("Auth Service is running");
+/* =========================
+   HEALTH CHECK
+========================= */
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "OK" });
 });
 
-// VERIFY TOKEN
+/* =========================
+   ROOT
+========================= */
+app.get("/", (req, res) => {
+  res.json({ message: "Auth Service Running" });
+});
+
+/* =========================
+   VERIFY TOKEN
+========================= */
 app.get("/verify", (req, res) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader)
+
+  if (!authHeader) {
     return res.status(401).json({ message: "No token provided" });
+  }
 
   const token = authHeader.replace("Bearer ", "");
 
@@ -37,30 +55,19 @@ app.get("/verify", (req, res) => {
   }
 });
 
-// TEMP LOGIN
-app.post("/login", (req, res) => {
-  const { email } = req.body;
+/* =========================
+   AUTH ROUTES (IMPORTANT)
+========================= */
+app.use("/auth", authRouter);
 
-  const token = jwt.sign(
-    { id: "123", email },
-    process.env.JWT_SECRET,
-    { expiresIn: "1h" }
-  );
-
-  res.json({ token });
-});
-
-// AUTH ROUTES
-app.use("/auth", authRoutes);
-
-// PROTECTED EXAMPLE
+/* =========================
+   PROTECTED ROUTE
+========================= */
 app.get("/auth/protected", verifyToken, (req, res) => {
   res.json({
-    message: "You accessed a protected route!",
+    message: "You accessed protected route!",
     user: req.user,
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Auth Service running on port ${PORT}`);
-});
+export default app;

@@ -1,49 +1,58 @@
-// 1️⃣ Datasource (connects Prisma to Postgres)
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL") // make sure this is defined in .env
-}
-
-// 2️⃣ Prisma client generator
 generator client {
   provider = "prisma-client-js"
 }
 
-// 3️⃣ Order model
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PACKED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
 model Order {
-  id           Int             @id @default(autoincrement())
-  userId       Int
-  orderCode    String          @unique
-  status       String          @default("PENDING") // PENDING, PAID, SHIPPED, DELIVERED, RETURNED
-  totalAmount  Int
-  delayCredit  Int?            @default(0)         // credit in case of shipping delay
+  id           String   @id @default(uuid())
+  userId       String
+  orderCode    String   @unique
+  totalAmount  Float
+  status       OrderStatus @default(PENDING)
+
+  // 🔥 ADD THIS (IMPORTANT FIX)
+  shipped      Boolean  @default(false)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   items        OrderItem[]
   timeline     OrderTimeline[]
-
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt          // auto-updated timestamp
 }
 
-// 4️⃣ Order items
 model OrderItem {
-  id        Int    @id @default(autoincrement())
-  orderId   Int
-  productId Int
+  id        String @id @default(uuid())
+  orderId   String
+
+  productId String
   name      String
-  price     Int
+  price     Float
   quantity  Int
 
-  order     Order  @relation(fields: [orderId], references: [id])
+  order     Order @relation(fields: [orderId], references: [id])
 }
 
-// 5️⃣ Order timeline
 model OrderTimeline {
-  id        Int      @id @default(autoincrement())
-  orderId   Int
-  status    String   // e.g., PENDING, PAID, SHIPPED, DELIVERED
-  message   String
+  id       String @id @default(uuid())
+  orderId  String
+
+  status   OrderStatus
+  message  String
+
   createdAt DateTime @default(now())
 
-  order     Order    @relation(fields: [orderId], references: [id])
+  order Order @relation(fields: [orderId], references: [id])
 }

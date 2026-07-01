@@ -1,52 +1,34 @@
-// src/services/product.service.js
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+import prisma from "../prismaClient.js";
 
-const createProduct = async ({ name, price, stock, sku }) => {
-  return prisma.product.create({
-    data: { name, price, stock, sku },
+export const createProduct = async (data) => {
+  return prisma.product.create({ data });
+};
+
+export const getProducts = async () => {
+  return prisma.product.findMany({
+    orderBy: { createdAt: "desc" },
   });
 };
 
-const getProducts = async () => {
-  return prisma.product.findMany();
+export const getProductById = async (id) => {
+  return prisma.product.findUnique({ where: { id } });
 };
 
-const getProductById = async (id) => {
-  return prisma.product.findUnique({
-    where: { id: Number(id) },
-  });
-};
-
-const updateProduct = async (id, data) => {
+export const updateProduct = async (id, data) => {
   return prisma.product.update({
-    where: { id: Number(id) },
+    where: { id },
     data,
   });
 };
 
-const deleteProduct = async (id) => {
+export const deleteProduct = async (id) => {
   return prisma.product.delete({
-    where: { id: Number(id) },
+    where: { id },
   });
 };
 
-const reduceStock = async (id, quantity) => {
-  return prisma.product.update({
-    where: { id: Number(id) },
-    data: {
-      stock: {
-        decrement: quantity,
-      },
-    },
+export const getVendorProducts = async (vendorId) => {
+  return prisma.product.findMany({
+    where: { vendorId },
   });
-};
-
-module.exports = {
-  createProduct,
-  getProducts,
-  getProductById,
-  updateProduct,
-  deleteProduct,
-  reduceStock,
 };

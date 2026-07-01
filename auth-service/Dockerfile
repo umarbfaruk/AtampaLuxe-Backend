@@ -1,22 +1,25 @@
 FROM node:20-slim
 
-# Install OpenSSL (required for Prisma)
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
-# Copy package files & install dependencies
+RUN apt-get update && apt-get install -y \
+    netcat-openbsd \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY package*.json ./
+COPY prisma ./prisma
+
 RUN npm install
 
-# Copy Prisma schema and generate client
-COPY prisma ./prisma
+COPY src ./src
+COPY .env ./
+COPY entrypoint.sh ./
+
 RUN npx prisma generate
 
-# Copy source code
-COPY src ./src
+RUN chmod +x entrypoint.sh
 
-EXPOSE 3001
+EXPOSE 3002
 
-# Start service
-CMD ["npm", "run", "dev"]
+CMD ["./entrypoint.sh"]

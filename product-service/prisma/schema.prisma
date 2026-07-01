@@ -1,20 +1,51 @@
-// 1️⃣ Datasource
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// 2️⃣ Prisma client
-generator client {
-  provider = "prisma-client-js"
-}
-
-// 3️⃣ Product model
 model Product {
-  id            Int      @id @default(autoincrement())
-  name          String
-  price         Int
-  stock         Int      @default(0)
-  reservedStock Int      @default(0)
-  createdAt     DateTime @default(now())
+  id              String   @id @default(uuid())
+
+  // OWNER
+  vendorId        String
+
+  // BASIC INFO
+  name            String
+  description     String
+  category        String
+  subcategory     String?
+
+  // PRICING
+  price           Float
+  stock           Int      @default(0)
+
+  // MEDIA
+  image           String?
+  video           String?
+
+  // PRODUCT DETAILS
+  brand           String?
+  sku             String?
+
+  // STATUS
+  isActive        Boolean  @default(true)
+  isFeatured      Boolean  @default(false)
+
+  // SEO
+  tags            Json?
+
+  // SHIPPING
+  weight          Float?
+
+  // RATINGS
+  averageRating   Float    @default(0)
+  totalReviews    Int      @default(0)
+
+  // TIMESTAMPS
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

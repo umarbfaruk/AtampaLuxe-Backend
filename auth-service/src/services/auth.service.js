@@ -1,45 +1,67 @@
-const { PrismaClient } = require("@prisma/client");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-const registerUser = async (username, email, password) => {
+/* =========================
+   REGISTER USER
+========================= */
+export const registerUser = async (
+  username,
+  email,
+  password,
+  phone,
+  firstName,
+  lastName
+) => {
+  // CHECK EXISTING USER
   const existing = await prisma.user.findUnique({
     where: { email },
   });
 
   if (existing) {
-    throw new Error("User already exists");
+    throw new Error("Email already exists");
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  // HASH PASSWORD
+  const hashedPassword = await bcrypt.hash(
+    password,
+    10
+  );
 
+  // CREATE USER
   const user = await prisma.user.create({
     data: {
-      username,
+      username: username || null,
       email,
       password: hashedPassword,
+      phone: phone || null,
+      firstName: firstName || null,
+      lastName: lastName || null,
+      role: "CUSTOMER",
     },
   });
 
-  const token = jwt.sign(
-    { id: user.id },
-    process.env.JWT_SECRET,
-    { expiresIn: "7d" }
-  );
-
   return {
-    token,
-    user: {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-    },
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+    phone: user.phone,
+    firstName: user.firstName,
+    lastName: user.lastName,
   };
 };
 
-const loginUser = async (email, password) => {
+/* =========================
+   LOGIN USER
+========================= */
+export const loginUser = async (
+  email,
+  password
+) => {
+  // FIND USER
   const user = await prisma.user.findUnique({
     where: { email },
   });
@@ -48,15 +70,28 @@ const loginUser = async (email, password) => {
     throw new Error("Invalid credentials");
   }
 
-  const valid = await bcrypt.compare(password, user.password);
-  if (!valid) {
+  // CHECK PASSWORD
+  const isMatch = await bcrypt.compare(
+    password,
+    user.password
+  );
+
+  if (!isMatch) {
     throw new Error("Invalid credentials");
   }
 
+  // GENERATE TOKEN
   const token = jwt.sign(
-    { id: user.id },
-    process.env.JWT_SECRET,
-    { expiresIn: "7d" }
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
+    },
+    process.env.JWT_SECRET || "supersecret",
+    {
+      expiresIn: "1d",
+    }
   );
 
   return {
@@ -65,8 +100,10 @@ const loginUser = async (email, password) => {
       id: user.id,
       username: user.username,
       email: user.email,
+      role: user.role,
+      phone: user.phone,
+      firstName: user.firstName,
+      lastName: user.lastName,
     },
   };
 };
-
-module.exports = { registerUser, loginUser };

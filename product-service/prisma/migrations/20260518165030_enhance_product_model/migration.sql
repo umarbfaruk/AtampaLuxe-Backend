@@ -1,0 +1,9 @@
+-- AlterTable
+ALTER TABLE "Product" ADD COLUMN     "averageRating" DOUBLE PRECISION NOT NULL DEFAULT 0,
+ADD COLUMN     "dimensions" TEXT,
+ADD COLUMN     "discountPrice" DOUBLE PRECISION,
+ADD COLUMN     "images" JSONB,
+ADD COLUMN     "quantitySold" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "reviewCount" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "tags" JSONB,
+ADD COLUMN     "weight" DOUBLE PRECISION;

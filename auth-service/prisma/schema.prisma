@@ -1,56 +1,40 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-enum OrderStatus {
-  CREATED
-  PAID
-  PACKED
-  SHIPPED
-  IN_TRANSIT
-  DELIVERED
-  CANCELLED
-  FAILED
+generator client {
+  provider = "prisma-client-js"
 }
 
 model User {
-  id        String   @id @default(uuid())
-  username  String
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
+  id            String   @id @default(uuid())
 
-  orders    Order[]
+  username      String   @unique
+  email         String   @unique
+  password      String
+
+  firstName     String?
+  lastName      String?
+  phone         String?
+
+  role          Role     @default(CUSTOMER)
+
+  // Multi-Tenant Support
+  tenantId      String?
+
+  // Refresh Token
+  refreshToken  String?
+
+  isVerified    Boolean  @default(false)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
-model Order {
-  id             String       @id @default(uuid())
-  userId         String
-  user           User         @relation(fields: [userId], references: [id])
-
-  totalAmount    Float
-  status         OrderStatus  @default(CREATED)
-
-  paymentRef     String?
-  trackingNumber String?
-
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-
-  items          OrderItem[]
-}
-
-model OrderItem {
-  id        String  @id @default(uuid())
-  orderId  String
-  order    Order   @relation(fields: [orderId], references: [id])
-
-  productId String
-  quantity  Int
-  price     Float
+enum Role {
+  CUSTOMER
+  ADMIN
+  VENDOR
+  SUPERADMIN
 }

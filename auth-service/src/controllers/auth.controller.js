@@ -1,28 +1,98 @@
-const { registerUser, loginUser } = require("../services/auth.service");
+import "dotenv/config";
 
-const register = async (req, res) => {
+import {
+  registerUser,
+  loginUser,
+} from "../services/auth.service.js";
+
+import {
+  generateAccessToken,
+  generateRefreshToken,
+} from "../utils/token.js";
+
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+/*
+====================================
+REGISTER
+====================================
+*/
+
+export const register = async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, phone } = req.body;
 
     if (!username || !email || !password) {
-      return res.status(400).json({ error: "All fields are required" });
+      return res.status(400).json({
+        error: "All fields required",
+      });
     }
 
-    const result = await registerUser(username, email, password);
-    res.json(result);
+    const user = await registerUser(
+      username,
+      email,
+      password,
+      phone
+    );
+
+    return res.status(201).json(user);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error("REGISTER ERROR:", err);
+
+    return res.status(400).json({
+      error: err.message,
+    });
   }
 };
 
-const login = async (req, res) => {
+/*
+====================================
+LOGIN
+====================================
+*/
+
+export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const result = await loginUser(email, password);
-    res.json(result);
+    const user = await loginUser(
+      req.body.email,
+      req.body.password
+    );
+
+    // =========================
+    // SAFE TOKEN GENERATION (FIXED FLOW)
+    // =========================
+
+    const accessToken = generateAccessToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    const refreshToken = generateRefreshToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    // Save refresh token
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { refreshToken },
+    });
+
+    return res.json({
+      accessToken,
+      refreshToken,
+      user,
+    });
+
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error("LOGIN ERROR:", err);
+
+    return res.status(400).json({
+      error: err.message,
+    });
   }
 };
-
-module.exports = { register, login };

@@ -1,16 +1,83 @@
 import express from "express";
-import { createOrder, getOrders, payOrder } from "../controllers/order.controller.js";
-import { authMiddleware } from "../middlewares/auth.middleware.js";
+
+import {
+ createOrder,
+ payOrder,
+ cancelOrder,
+ getOrders,
+ updateOrderStatus,
+ getVendorAnalytics
+}
+from "../controllers/order.controller.js";
+
+
+import { authMiddleware }
+from "../middlewares/auth.middleware.js";
+
+
+import { requireRole }
+from "../middlewares/role.middleware.js";
+
 
 const router = express.Router();
 
-// Create a new order
-router.post("/", authMiddleware, createOrder);
 
-// Pay for an order by ID
-router.post("/:id/pay", authMiddleware, payOrder);
 
-// Get all orders
-router.get("/", authMiddleware, getOrders);
+router.post(
+"/",
+authMiddleware,
+createOrder
+);
+
+
+
+router.get(
+"/",
+authMiddleware,
+getOrders
+);
+
+
+
+router.patch(
+"/:id/pay",
+authMiddleware,
+payOrder
+);
+
+
+
+router.patch(
+"/:id/cancel",
+authMiddleware,
+cancelOrder
+);
+
+
+
+router.patch(
+"/:id/status",
+authMiddleware,
+requireRole("ADMIN"),
+updateOrderStatus
+);
+
+
+
+router.patch(
+"/internal/:id/status",
+updateOrderStatus
+);
+
+
+
+router.get(
+"/vendor/analytics",
+authMiddleware,
+requireRole("VENDOR"),
+getVendorAnalytics
+);
+
+
 
 export default router;
