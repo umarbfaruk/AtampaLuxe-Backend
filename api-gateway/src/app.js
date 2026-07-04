@@ -8,10 +8,13 @@ const app = express();
 /* =========================
    GLOBAL MIDDLEWARE
 ========================= */
-app.use(cors({
-  origin: true,
-  credentials: true,
-}));
+
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 
@@ -19,24 +22,55 @@ app.use(express.json());
    SERVICES
 ========================= */
 
-const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || "http://auth-service:3002";
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || "http://user-service:3001";
-const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL || "http://product-service:3003";
-const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || "http://order-service:3004";
-const PAYMENT_SERVICE_URL = process.env.PAYMENT_SERVICE_URL || "http://payment-service:3005";
-const SHIPPING_SERVICE_URL = process.env.SHIPPING_SERVICE_URL || "http://shipping-service:3006";
+const AUTH_SERVICE_URL =
+  process.env.AUTH_SERVICE_URL || "http://auth-service:3002";
+
+const USER_SERVICE_URL =
+  process.env.USER_SERVICE_URL || "http://user-service:3001";
+
+const PRODUCT_SERVICE_URL =
+  process.env.PRODUCT_SERVICE_URL || "http://product-service:3003";
+
+const ORDER_SERVICE_URL =
+  process.env.ORDER_SERVICE_URL || "http://order-service:3004";
+
+const PAYMENT_SERVICE_URL =
+  process.env.PAYMENT_SERVICE_URL || "http://payment-service:3005";
+
+const SHIPPING_SERVICE_URL =
+  process.env.SHIPPING_SERVICE_URL || "http://shipping-service:3006";
 
 /* =========================
    HEALTH
 ========================= */
 
 app.get("/", (req, res) => {
-  res.json({ message: "API Gateway Running" });
+  res.json({
+    message: "API Gateway Running",
+  });
 });
 
 app.get("/health", (req, res) => {
-  res.json({ status: "OK" });
+  res.json({
+    status: "OK",
+  });
 });
+
+/* ============================================================
+   HELPER
+   Rewrites Express JSON body back into proxied request.
+============================================================ */
+
+function writeBody(proxyReq, req) {
+  if (!req.body || !Object.keys(req.body).length) return;
+
+  const bodyData = JSON.stringify(req.body);
+
+  proxyReq.setHeader("Content-Type", "application/json");
+  proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
+
+  proxyReq.write(bodyData);
+}
 
 /* =========================
    AUTH
@@ -45,10 +79,38 @@ app.get("/health", (req, res) => {
 app.use(
   "/api/auth",
   createProxyMiddleware({
-    target: AUTH_SERVICE_URL,
+    target: `${AUTH_SERVICE_URL}/auth`,
     changeOrigin: true,
     secure: false,
-    pathRewrite: { "^/api/auth": "/auth" },
+
+    pathRewrite: {
+      "^/api/auth": "",
+    },
+
+    on: {
+      proxyReq(proxyReq, req) {
+        console.log("➡ AUTH REQUEST:", req.method, req.originalUrl);
+        console.log("Forwarding to:", `${AUTH_SERVICE_URL}/auth`);
+
+        writeBody(proxyReq, req);
+      },
+
+      proxyRes(proxyRes, req) {
+        console.log(
+          "⬅ AUTH RESPONSE:",
+          proxyRes.statusCode,
+          req.originalUrl
+        );
+      },
+
+      error(err, req, res) {
+        console.error("AUTH PROXY ERROR:", err);
+
+        res.status(502).json({
+          error: "Gateway auth proxy error",
+        });
+      },
+    },
   })
 );
 
@@ -62,7 +124,16 @@ app.use(
     target: USER_SERVICE_URL,
     changeOrigin: true,
     secure: false,
-    pathRewrite: { "^/api/users": "/users" },
+
+    pathRewrite: {
+      "^/api/users": "/users",
+    },
+
+    on: {
+      proxyReq(proxyReq, req) {
+        writeBody(proxyReq, req);
+      },
+    },
   })
 );
 
@@ -76,12 +147,21 @@ app.use(
     target: PRODUCT_SERVICE_URL,
     changeOrigin: true,
     secure: false,
-    pathRewrite: { "^/api/products": "/products" },
+
+    pathRewrite: {
+      "^/api/products": "/products",
+    },
+
+    on: {
+      proxyReq(proxyReq, req) {
+        writeBody(proxyReq, req);
+      },
+    },
   })
 );
 
 /* =========================
-   ORDERS (IMPROVED)
+   ORDERS
 ========================= */
 
 app.use(
@@ -90,40 +170,44 @@ app.use(
     target: ORDER_SERVICE_URL,
     changeOrigin: true,
     secure: false,
-    pathRewrite: { "^/api/orders": "/orders" },
 
-    onProxyReq(proxyReq, req) {
-      console.log("➡️ ORDER REQUEST:", req.method, req.originalUrl);
-
-      // Forward auth header properly
-      if (req.headers.authorization) {
-        proxyReq.setHeader("Authorization", req.headers.authorization);
-        console.log("✅ JWT FORWARDED");
-      } else {
-        console.log("❌ NO AUTH HEADER AT GATEWAY");
-      }
-
-      // IMPORTANT FIX: forward JSON body correctly
-      if (req.body && Object.keys(req.body).length) {
-        const bodyData = JSON.stringify(req.body);
-
-        proxyReq.setHeader("Content-Type", "application/json");
-        proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
-
-        proxyReq.write(bodyData);
-      }
+    pathRewrite: {
+      "^/api/orders": "/orders",
     },
 
-    onProxyRes(proxyRes, req) {
-      console.log("⬅️ ORDER RESPONSE:", proxyRes.statusCode, req.originalUrl);
-    },
+    on: {
+      proxyReq(proxyReq, req) {
+        console.log("➡ ORDER REQUEST:", req.method, req.originalUrl);
 
-    onError(err, req, res) {
-      console.log("ORDER PROXY ERROR:", err.message);
+        if (req.headers.authorization) {
+          proxyReq.setHeader(
+            "Authorization",
+            req.headers.authorization
+          );
 
-      res.status(502).json({
-        error: "Gateway order proxy error",
-      });
+          console.log("✅ JWT FORWARDED");
+        } else {
+          console.log("❌ NO AUTH HEADER");
+        }
+
+        writeBody(proxyReq, req);
+      },
+
+      proxyRes(proxyRes, req) {
+        console.log(
+          "⬅ ORDER RESPONSE:",
+          proxyRes.statusCode,
+          req.originalUrl
+        );
+      },
+
+      error(err, req, res) {
+        console.error("ORDER PROXY ERROR:", err);
+
+        res.status(502).json({
+          error: "Gateway order proxy error",
+        });
+      },
     },
   })
 );
@@ -138,7 +222,16 @@ app.use(
     target: PAYMENT_SERVICE_URL,
     changeOrigin: true,
     secure: false,
-    pathRewrite: { "^/api/payment": "/payment" },
+
+    pathRewrite: {
+      "^/api/payment": "/payment",
+    },
+
+    on: {
+      proxyReq(proxyReq, req) {
+        writeBody(proxyReq, req);
+      },
+    },
   })
 );
 
@@ -152,7 +245,16 @@ app.use(
     target: SHIPPING_SERVICE_URL,
     changeOrigin: true,
     secure: false,
-    pathRewrite: { "^/api/shipping": "/shipping" },
+
+    pathRewrite: {
+      "^/api/shipping": "/shipping",
+    },
+
+    on: {
+      proxyReq(proxyReq, req) {
+        writeBody(proxyReq, req);
+      },
+    },
   })
 );
 

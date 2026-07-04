@@ -88,57 +88,83 @@ app.get("/api/auth/health", async (req, res) => {
 ===================================== */
 
 app.post("/api/auth/login", async (req, res) => {
+  console.log("\n========== AUTH LOGIN REQUEST ==========");
+  console.log("Incoming Body:", req.body);
+  console.log("Target URL:", `${AUTH_SERVICE_URL}/auth/login`);
+
   try {
     const response = await api.post(
       `${AUTH_SERVICE_URL}/auth/login`,
       req.body
     );
 
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    console.error(
-      "Auth login error:",
-      error.response?.data || error.message
-    );
+    console.log("✅ AUTH LOGIN SUCCESS");
+    console.log("Status:", response.status);
 
-    res.status(
-      error.response?.status || 500
-    ).json(
-      error.response?.data || {
-        error: "Auth service unavailable",
-      }
-    );
+    res.status(response.status).json(response.data);
+
+  } catch (error) {
+
+    console.error("❌ AUTH LOGIN FAILED");
+
+    if (error.response) {
+      console.error("Status:", error.response.status);
+      console.error("Response:", error.response.data);
+
+      return res
+        .status(error.response.status)
+        .json(error.response.data);
+    }
+
+    console.error("Message:", error.message);
+
+    return res.status(500).json({
+      error: "Auth service unavailable",
+      message: error.message,
+    });
   }
 });
-
 /* =====================================
    AUTH REGISTER
 ===================================== */
 
 app.post("/api/auth/register", async (req, res) => {
+  console.log("\n========== AUTH REGISTER REQUEST ==========");
+  console.log("Incoming Body:", req.body);
+  console.log("Target URL:", `${AUTH_SERVICE_URL}/auth/register`);
+
   try {
     const response = await api.post(
       `${AUTH_SERVICE_URL}/auth/register`,
       req.body
     );
 
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    console.error(
-      "Auth register error:",
-      error.response?.data || error.message
-    );
+    console.log("✅ AUTH REGISTER SUCCESS");
+    console.log("Status:", response.status);
 
-    res.status(
-      error.response?.status || 500
-    ).json(
-      error.response?.data || {
-        error: "Auth service unavailable",
-      }
-    );
+    res.status(response.status).json(response.data);
+
+  } catch (error) {
+
+    console.error("❌ AUTH REGISTER FAILED");
+
+    if (error.response) {
+      console.error("Status:", error.response.status);
+      console.error("Response:", error.response.data);
+
+      return res
+        .status(error.response.status)
+        .json(error.response.data);
+    }
+
+    console.error("Message:", error.message);
+
+    return res.status(500).json({
+      error: "Auth service unavailable",
+      message: error.message,
+    });
   }
 });
-
 /* =====================================
    PRODUCTS
 ===================================== */

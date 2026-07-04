@@ -16,6 +16,7 @@ router.post("/register", async (req, res) => {
     console.log("REGISTER BODY:", req.body);
 
     const {
+      username,
       email,
       password,
       phone,
@@ -37,10 +38,9 @@ router.post("/register", async (req, res) => {
        CHECK EXISTING USER
     ========================= */
 
-    const existingUser =
-      await prisma.user.findUnique({
-        where: { email },
-      });
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
 
     if (existingUser) {
       return res.status(400).json({
@@ -52,8 +52,31 @@ router.post("/register", async (req, res) => {
        HASH PASSWORD
     ========================= */
 
-    const hashedPassword =
-      await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    /* =========================
+       GENERATE USERNAME
+       (Keeps v1.0 frontend compatible)
+    ========================= */
+
+    let finalUsername =
+      username && username.trim() !== ""
+        ? username.trim()
+        : email.split("@")[0];
+
+    // Ensure username uniqueness
+    let counter = 1;
+
+    while (
+      await prisma.user.findUnique({
+        where: {
+          username: finalUsername,
+        },
+      })
+    ) {
+      finalUsername = `${email.split("@")[0]}${counter}`;
+      counter++;
+    }
 
     /* =========================
        CREATE USER
@@ -61,6 +84,7 @@ router.post("/register", async (req, res) => {
 
     const user = await prisma.user.create({
       data: {
+        username: finalUsername,
         email,
         password: hashedPassword,
         phone: phone || null,
@@ -79,6 +103,7 @@ router.post("/register", async (req, res) => {
 
       user: {
         id: user.id,
+        username: user.username,
         email: user.email,
         role: user.role,
         phone: user.phone,
@@ -119,9 +144,6 @@ router.post("/login", async (req, res) => {
       where: { email },
     });
 
-    // =========================
-    // DEBUG LOGS (TEMPORARY)
-    // =========================
     console.log("USER FOUND:", user);
 
     if (!user) {
@@ -139,9 +161,6 @@ router.post("/login", async (req, res) => {
       user.password
     );
 
-    // =========================
-    // DEBUG LOGS (TEMPORARY)
-    // =========================
     console.log("PASSWORD FROM REQUEST:", password);
     console.log("HASH FROM DB:", user.password);
     console.log("COMPARE RESULT:", isValid);
@@ -179,6 +198,7 @@ router.post("/login", async (req, res) => {
 
       user: {
         id: user.id,
+        username: user.username,
         email: user.email,
         role: user.role,
         phone: user.phone,
