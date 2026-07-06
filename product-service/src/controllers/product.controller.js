@@ -5,6 +5,21 @@ import prisma from "../prismaClient.js";
 ========================= */
 
 export const createProduct = async (req, res) => {
+  console.log("\n=================================================");
+  console.log("🚀 CREATE PRODUCT CONTROLLER");
+  console.log("=================================================");
+
+  console.log("Request Body:");
+  console.log(req.body);
+
+  console.log("\nUploaded File:");
+  console.log(req.file);
+
+  console.log("\nAuthenticated User:");
+  console.log(req.user);
+
+  console.log("=================================================\n");
+
   try {
     const {
       name,
@@ -15,51 +30,104 @@ export const createProduct = async (req, res) => {
       sku,
       price,
       stock,
+      imageUrl,
       tags,
       weight,
       video,
     } = req.body;
 
-    const product = await prisma.product.create({
-      data: {
-        vendorId: req.user.id,
+    /* -------------------------
+       Validation
+    -------------------------- */
 
-        name,
-        description,
-        category,
-        subcategory,
+    if (!name || !price || !stock) {
+      console.log("❌ Validation failed");
 
-        brand,
-        sku,
+      return res.status(400).json({
+        message: "Name, price and stock are required.",
+      });
+    }
 
-        price: Number(price),
+    /* -------------------------
+       Determine image
+    -------------------------- */
 
-        stock: Number(stock),
+    const image = req.file
+      ? `/uploads/${req.file.filename}`
+      : imageUrl || null;
 
-        image: req.file
-          ? `/uploads/${req.file.filename}`
-          : null,
+    console.log("Image to save:");
+    console.log(image);
 
-        video,
+    /* -------------------------
+       Build Prisma data
+    -------------------------- */
 
-        tags: tags
+    const productData = {
+      vendorId: req.user.id,
+
+      name,
+
+      description: description || null,
+
+      category: category || null,
+
+      subcategory: subcategory || null,
+
+      brand: brand || null,
+
+      sku: sku || null,
+
+      price: Number(price),
+
+      stock: Number(stock),
+
+      image,
+
+      video: video || null,
+
+      tags: tags
+        ? typeof tags === "string"
           ? JSON.parse(tags)
-          : null,
+          : tags
+        : null,
 
-        weight: weight
-          ? Number(weight)
-          : null,
-      },
+      weight: weight
+        ? Number(weight)
+        : null,
+    };
+
+    console.log("\n====================================");
+    console.log("DATA SENT TO PRISMA");
+    console.log("====================================");
+    console.dir(productData, { depth: null });
+    console.log("====================================\n");
+
+    /* -------------------------
+       Create Product
+    -------------------------- */
+
+    const product = await prisma.product.create({
+      data: productData,
     });
 
-    res.status(201).json(product);
-  } catch (err) {
-    console.error(
-      "CREATE PRODUCT ERROR:",
-      err
-    );
+    console.log("\n====================================");
+    console.log("✅ PRODUCT CREATED SUCCESSFULLY");
+    console.log("====================================");
+    console.dir(product, { depth: null });
+    console.log("====================================\n");
 
-    res.status(500).json({
+    return res.status(201).json(product);
+  } catch (err) {
+    console.log("\n====================================");
+    console.log("❌ CREATE PRODUCT ERROR");
+    console.log("====================================");
+
+    console.error(err);
+
+    console.log("====================================\n");
+
+    return res.status(500).json({
       message: "Failed to create product",
       details: err.message,
     });
@@ -72,24 +140,20 @@ export const createProduct = async (req, res) => {
 
 export const getProducts = async (req, res) => {
   try {
-    const products =
-      await prisma.product.findMany({
-        where: {
-          isActive: true,
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-      });
+    const products = await prisma.product.findMany({
+      where: {
+        isActive: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
 
-    res.json(products);
+    return res.json(products);
   } catch (err) {
-    console.error(
-      "GET PRODUCTS ERROR:",
-      err
-    );
+    console.error("GET PRODUCTS ERROR:", err);
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Failed to fetch products",
       details: err.message,
     });
@@ -100,22 +164,13 @@ export const getProducts = async (req, res) => {
    GET PRODUCT BY ID
 ========================= */
 
-export const getProductById = async (
-  req,
-  res
-) => {
+export const getProductById = async (req, res) => {
   try {
-    console.log(
-      "GET PRODUCT ID:",
-      req.params.id
-    );
-
-    const product =
-      await prisma.product.findUnique({
-        where: {
-          id: req.params.id,
-        },
-      });
+    const product = await prisma.product.findUnique({
+      where: {
+        id: req.params.id,
+      },
+    });
 
     if (!product) {
       return res.status(404).json({
@@ -123,14 +178,11 @@ export const getProductById = async (
       });
     }
 
-    res.json(product);
+    return res.json(product);
   } catch (err) {
-    console.error(
-      "GET PRODUCT ERROR:",
-      err
-    );
+    console.error("GET PRODUCT ERROR:", err);
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Failed to fetch product",
       details: err.message,
     });
@@ -141,27 +193,20 @@ export const getProductById = async (
    UPDATE PRODUCT
 ========================= */
 
-export const updateProduct = async (
-  req,
-  res
-) => {
+export const updateProduct = async (req, res) => {
   try {
-    const updated =
-      await prisma.product.update({
-        where: {
-          id: req.params.id,
-        },
-        data: req.body,
-      });
+    const updated = await prisma.product.update({
+      where: {
+        id: req.params.id,
+      },
+      data: req.body,
+    });
 
-    res.json(updated);
+    return res.json(updated);
   } catch (err) {
-    console.error(
-      "UPDATE PRODUCT ERROR:",
-      err
-    );
+    console.error("UPDATE PRODUCT ERROR:", err);
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Failed to update product",
       details: err.message,
     });
@@ -172,10 +217,7 @@ export const updateProduct = async (
    DELETE PRODUCT
 ========================= */
 
-export const deleteProduct = async (
-  req,
-  res
-) => {
+export const deleteProduct = async (req, res) => {
   try {
     await prisma.product.delete({
       where: {
@@ -183,16 +225,13 @@ export const deleteProduct = async (
       },
     });
 
-    res.json({
+    return res.json({
       message: "Product deleted",
     });
   } catch (err) {
-    console.error(
-      "DELETE PRODUCT ERROR:",
-      err
-    );
+    console.error("DELETE PRODUCT ERROR:", err);
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Failed to delete product",
       details: err.message,
     });

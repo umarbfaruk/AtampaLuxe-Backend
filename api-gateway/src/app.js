@@ -58,7 +58,6 @@ app.get("/health", (req, res) => {
 
 /* ============================================================
    HELPER
-   Rewrites Express JSON body back into proxied request.
 ============================================================ */
 
 function writeBody(proxyReq, req) {
@@ -138,7 +137,7 @@ app.use(
 );
 
 /* =========================
-   PRODUCTS
+   PRODUCTS (FIXED - FORCE PATH)
 ========================= */
 
 app.use(
@@ -148,18 +147,37 @@ app.use(
     changeOrigin: true,
     secure: false,
 
-    pathRewrite: {
-      "^/api/products": "/products",
-    },
-
     on: {
       proxyReq(proxyReq, req) {
+        console.log("➡ PRODUCT REQUEST:", req.method, req.originalUrl);
+
+        // 🔥 FORCE CORRECT PATH MANUALLY
+        proxyReq.path = "/products";
+
+        console.log("Forwarding to:", PRODUCT_SERVICE_URL);
+        console.log("Forced Proxy Path:", proxyReq.path);
+
         writeBody(proxyReq, req);
+      },
+
+      proxyRes(proxyRes, req) {
+        console.log(
+          "⬅ PRODUCT RESPONSE:",
+          proxyRes.statusCode,
+          req.originalUrl
+        );
+      },
+
+      error(err, req, res) {
+        console.error("PRODUCT PROXY ERROR:", err);
+
+        res.status(502).json({
+          error: "Gateway product proxy error",
+        });
       },
     },
   })
 );
-
 /* =========================
    ORDERS
 ========================= */
@@ -267,5 +285,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 API Gateway running on port ${PORT}`);
   console.log("AUTH:", AUTH_SERVICE_URL);
+  console.log("USER:", USER_SERVICE_URL);
+  console.log("PRODUCT:", PRODUCT_SERVICE_URL);
   console.log("ORDER:", ORDER_SERVICE_URL);
 });
